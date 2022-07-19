@@ -1,0 +1,5 @@
+.venv
+.env
+formatter.sql
+testapicalls.ipynb
+**/__pycache__
