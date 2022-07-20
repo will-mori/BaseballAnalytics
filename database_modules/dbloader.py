@@ -9,6 +9,9 @@ if __name__ == "__main__":
     print("Connected to DB")
     
     dbcursor = conn.cursor()    
+    dbcursor.execute("DROP TABLE IF EXISTS players")
+    dbcursor.execute("DROP TABLE IF EXISTS positions")
+    dbcursor.execute("DROP TABLE IF EXISTS statuses")
     dbcursor.execute("DROP TABLE IF EXISTS teams")
     dbcursor.execute("DROP TABLE IF EXISTS divisions")
     dbcursor.execute("DROP TABLE IF EXISTS leagues")
@@ -88,9 +91,7 @@ if __name__ == "__main__":
     conn.commit()
 
 
-    dbcursor.execute("DROP TABLE IF EXISTS players")
-    dbcursor.execute("DROP TABLE IF EXISTS positions")
-    dbcursor.execute("DROP TABLE IF EXISTS statuses")
+
     dbcursor.execute(
         """CREATE TABLE positions(
             code INT, 
@@ -117,9 +118,46 @@ if __name__ == "__main__":
             PRIMARY KEY (playerId),
             FOREIGN KEY (position) REFERENCES positions(code),
             FOREIGN KEY (teamID) REFERENCES teams(teamId),
-            FOREIGN KEY (status) REFENCES statuses(code)
+            FOREIGN KEY (status) REFERENCES statuses(code)
             )""")
 
-    # TODO Get all teams rosters and load players into the tables
+    dbcursor.execute("""SELECT teamId FROM teams""")
+    ids = []
+    for i in dbcursor.fetchall():
+        ids.append(i[0])
+
+    positions = {}
+    statuses = {}
+    players = []
+    for i in ids:
+        # i is team id, make api call and then iterate over the result inserting into the db
+        resp = statsapi.get("team_roster", {"teamId":i})["roster"]
+        for elem in resp:
+            try:
+                j = elem["person"]
+                positions[j["position"]["code"]] = (j["position"]["name"], j["position"]["type"], j["position"]["abbreviation"])
+                statuses[j["status"]["code"]] = (j["status"]["description"])
+                players.append((j["id"],j["fullName"],j["jerseyNumber"],j["position"]["code"],j["status"]["code"],j["parentTeamId"]))
+            except KeyError:
+                print(j)
+
+    position_sql = """INSERT INTO positions VALUES (%s, %s, %s, %s)"""
+    position_val = [(k, v[0], v[1], v[2]) for k,v in positions.items()]
+
+    dbcursor.executemany(position_sql, position_val)
+    conn.commit()
+    
+    statuses_sql = """INSERT INTO statuses VALUES (%s,%s)"""
+    statuses_val = [(k,v[0]) for k,v in statuses.items()]
+
+    dbcursor.executemany(statuses_sql, statuses_val)
+    conn.commit()
+
+    player_sql = """INSERT INTO players VALUES (%s,%s,%s,%s,%s,%s)"""
+    dbcursor.executemany(player_sql, players)
+    conn.commit()
+
+
+
 
 
