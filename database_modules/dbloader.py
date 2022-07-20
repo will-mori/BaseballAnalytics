@@ -94,10 +94,10 @@ if __name__ == "__main__":
 
     dbcursor.execute(
         """CREATE TABLE positions(
-            code INT, 
-            name VARCHAR(10), 
-            type VARCHAR(10), 
-            abbreviation VARCHAR(2), 
+            code VARCHAR(3), 
+            name VARCHAR(20), 
+            type VARCHAR(20), 
+            abbreviation VARCHAR(3), 
             PRIMARY KEY (code)
             )""")
     dbcursor.execute(
@@ -112,7 +112,7 @@ if __name__ == "__main__":
             playerId INT, 
             fullName VARCHAR(35), 
             jerseyNumber INT, 
-            position INT, 
+            position VARCHAR(3), 
             status VARCHAR(3), 
             teamID INT,
             PRIMARY KEY (playerId),
@@ -132,12 +132,11 @@ if __name__ == "__main__":
     for i in ids:
         # i is team id, make api call and then iterate over the result inserting into the db
         resp = statsapi.get("team_roster", {"teamId":i})["roster"]
-        for elem in resp:
+        for j in resp:
             try:
-                j = elem["person"]
-                positions[j["position"]["code"]] = (j["position"]["name"], j["position"]["type"], j["position"]["abbreviation"])
+                positions[str(j["position"]["code"])] = (j["position"]["name"], j["position"]["type"], j["position"]["abbreviation"])
                 statuses[j["status"]["code"]] = (j["status"]["description"])
-                players.append((j["id"],j["fullName"],j["jerseyNumber"],j["position"]["code"],j["status"]["code"],j["parentTeamId"]))
+                players.append((j["person"]["id"],j["person"]["fullName"],j["jerseyNumber"],j["position"]["code"],j["status"]["code"],j["parentTeamId"]))
             except KeyError:
                 print(j)
 
